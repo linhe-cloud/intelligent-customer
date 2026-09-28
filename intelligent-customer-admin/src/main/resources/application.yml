@@ -1,0 +1,88 @@
+server:
+    port: 8081
+
+spring:
+    config:
+        import: "optional:file:./.env[.properties]"
+
+    application:
+        name: IntelligentCustomer
+
+    servlet:
+        multipart:
+            max-file-size: 100MB
+            max-request-size: 100MB
+
+    # MySQL
+    datasource:
+        url: ${DB_URL:jdbc:mysql://localhost:3306/intelligent_customer?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        driver-class-name: com.mysql.cj.jdbc.Driver
+
+    # Redis
+    data:
+        redis:
+            host: localhost
+            port: 6379
+
+    # kafka
+    kafka: 
+        bootstrap-servers: localhost:9092
+        # 生产者配置
+        producer:
+            key-serializer: org.apache.kafka.common.serialization.StringSerializer
+            value-serializer: org.apache.kafka.common.serialization.StringSerializer
+            retries: 3
+            acks: all
+        # 消费者配置
+        consumer:
+            key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+            value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+            auto-offset-reset: earliest
+            group-id: intelligent-customer-group
+
+    # DeepSeek uses an OpenAI-compatible chat API.
+    ai:
+        openai:
+            base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+            api-key: ${DEEPSEEK_API_KEY:}
+            chat:
+                options:
+                    model: ${DEEPSEEK_MODEL:deepseek-chat}
+        bge:
+            base-url: ${BGE_BASE_URL:https://api.siliconflow.cn/v1}
+            api-key: ${BGE_API_KEY}
+            model: ${BGE_MODEL:BAAI/bge-m3}
+            dimension: ${BGE_DIMENSION:1024}
+
+
+mybatis-plus:
+    type-handlers-package: com.IntelligentCustomer.system.repository.typehandler
+    configuration:
+        map-underscore-to-camel-case: true
+    global-config:
+        banner: false
+
+milvus:
+    uri: ${MILVUS_URI:http://localhost:19530}
+    token: ${MILVUS_TOKEN:}
+    database: ${MILVUS_DATABASE:default}
+    collection: ${MILVUS_COLLECTION:knowledge_vectors}
+    dimension: ${MILVUS_DIMENSION:1024}
+    metric-type: ${MILVUS_METRIC_TYPE:COSINE}
+    auto-create: true
+
+document:
+    upload-directory: ${DOCUMENT_UPLOAD_DIRECTORY:./data/uploads}
+    max-file-size: 20971520
+    chunk-size: 1000
+    chunk-overlap: 150
+    max-chunks: 1000
+    embedding-batch-size: 16
+    allowed-extensions:
+        - txt
+        - pdf
+        - docx
+        - xls
+        - xlsx
