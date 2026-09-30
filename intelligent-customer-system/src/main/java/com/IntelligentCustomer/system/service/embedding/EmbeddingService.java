@@ -46,9 +46,16 @@ public class EmbeddingService {
     /**
      * 文档批量处理 - 封装完整入库流程
      */
-    public List<KnowledgeVector> embedDocuments(List<DocumentChunk> documents, String filename) {
+    public List<KnowledgeVector> embedDocuments(
+            List<DocumentChunk> documents,
+            String fileId,
+            String filename
+    ) {
         if (documents == null || documents.isEmpty()) {
             return new ArrayList<>();
+        }
+        if (fileId == null || fileId.trim().isEmpty()) {
+            throw new BusinessException("文件ID不能为空");
         }
         if (filename == null || filename.trim().isEmpty()) {
             throw new BusinessException("文件名不能为空");
@@ -67,6 +74,7 @@ public class EmbeddingService {
         for (int i = 0; i < documents.size(); i++) {
             KnowledgeVector kv = new KnowledgeVector();
             kv.setId(UUID.randomUUID());
+            kv.setFileId(fileId);
             kv.setContent(documents.get(i).getContent());
             kv.setEmbedding(embeddings.get(i));
             kv.setSourceFile(filename);

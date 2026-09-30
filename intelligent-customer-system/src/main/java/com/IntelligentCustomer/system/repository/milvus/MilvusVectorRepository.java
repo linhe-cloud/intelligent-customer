@@ -68,7 +68,7 @@ public class MilvusVectorRepository {
         // 添加向量ID
             row.addProperty("id", vector.getId().toString());
         // 添加源文件ID
-            row.addProperty("file_id", vector.getSourceFile());
+            row.addProperty("file_id", vector.getFileId());
         // 添加向量内容
             row.addProperty("content", vector.getContent());
         // 添加向量嵌入数据，将数组转换为JsonArray
@@ -118,7 +118,7 @@ public class MilvusVectorRepository {
                 .collectionName(properties.getCollection())   // 设置集合名
                 .annsField("embedding")                      // 设置向量字段名
                 .metricType(IndexParam.MetricType.COSINE)   // 使用余弦相似度
-                .topK(topK)                                 // 设置返回结果数量
+                .limit(topK)                                 // 设置返回结果数量
                 .outputFields(List.of("id", "file_id", "content", "source_file",  // 设置返回字段
                         "chunk_index", "created_at"))
                 .data(List.of(new FloatVec(queryVector)))    // 设置查询向量
@@ -137,29 +137,34 @@ public class MilvusVectorRepository {
         }
         return result;
     }
-
 /**
- * 根据源文件名删除相关数据
- * @param sourceFile 要删除的源文件名
- * @return 删除的记录数量
- * @throws BusinessException 当文件名为空或包含双引号时抛出异常
+ * 根据文件ID删除数据
+ * @param fileId 文件ID，用于标识要删除的数据
+ * @return int 被删除的记录数量
+ * @throws BusinessException 当文件ID为空或包含非法字符时抛出
  */
-    public int deleteBySourceFile(String sourceFile) {
-    // 检查文件名是否为空或空白
-        if (sourceFile == null || sourceFile.isBlank()) {
-            throw new BusinessException("文件名不能为空");
-        }
-    // 检查文件名是否包含双引号
-        if (sourceFile.contains("\"")) {
-            throw new BusinessException("文件名不能包含双引号");
+    public int deleteByFileId(String fileId) {
+    // 检查文件ID是否为空或空白字符串
+        if (fileId == null || fileId.isBlank()) {
+            throw new BusinessException("文件ID不能为空");
         }
 
-    // 构建删除请求并执行删除操作
-        long deleted = milvusClient.delete(DeleteReq.builder()
-                .databaseName(properties.getDatabase())  // 设置数据库名称
-                .collectionName(properties.getCollection())  // 设置集合名称
-                .filter("source_file == \"" + sourceFile + "\"")  // 设置过滤条件
-                .build()).getDeleteCnt();  // 获取删除的记录数量
+    // 检查文件ID是否包含非法字符（双引号）
+        if (fileId.contains("\"")) {
+            throw new BusinessException("文件ID不合法");
+        }
+
+    // 使用Milvus客户端执行删除操作
+    // 构建删除请求，指定数据库名、集合名和过滤条件
+    // 过滤条件使用file_id字段匹配指定的文件ID
+        long deleted = milvusClient.delete(
+                DeleteReq.builder()
+                        .databaseName(properties.getDatabase())
+                        .collectionName(properties.getCollection())
+                        .filter("file_id == \"" + fileId + "\"")
+                        .build()
+        ).getDeleteCnt();  // 获取删除的记录数量
+
     // 将long类型转换为int类型并返回
         return Math.toIntExact(deleted);
     }
@@ -177,6 +182,7 @@ public class MilvusVectorRepository {
     // 设置知识向量的ID，从搜索结果ID转换而来
         vector.setId(UUID.fromString(String.valueOf(item.getId())));
     // 设置知识向量的内容，从实体中获取
+        vector.setFileId(String.valueOf(entity.get("file_id")));
         vector.setContent(String.valueOf(entity.get("content")));
     // 设置知识向量的源文件，从实体中获取
         vector.setSourceFile(String.valueOf(entity.get("source_file")));
@@ -203,6 +209,7 @@ public class MilvusVectorRepository {
     private void validateVector(KnowledgeVector vector) {
     // 检查向量是否为null或必要字段是否为空/空白
         if (vector == null || vector.getId() == null
+                || vector.getFileId() == null || vector.getFileId().isBlank()
                 || vector.getContent() == null || vector.getContent().isBlank() // 检查内容是否为null或空白字符串
                 || vector.getEmbedding() == null // 检查嵌入向量是否为null
                 || vector.getEmbedding().length != properties.getDimension() // 检查向量维度是否配置正确

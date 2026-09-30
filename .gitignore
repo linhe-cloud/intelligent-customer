@@ -47,3 +47,5 @@ docker/milvus/volumes/
 
 # Local logs
 *.log
+
+test-data/

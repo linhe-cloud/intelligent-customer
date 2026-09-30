@@ -83,13 +83,13 @@ public class FileValidationService {
         return normalized;
     }
 
-    public String getExtension(String filename) {
     /**
      * 从文件名中提取扩展名
      * @param filename 文件名
      * @return 文件扩展名（小写）
      * @throws BusinessException 当文件名不包含扩展名时抛出
      */
+    public String getExtension(String filename) {
         int index = filename.lastIndexOf('.');
         if (index < 0 || index == filename.length() - 1) {
             throw new BusinessException("文件名必须包含扩展名");
@@ -98,13 +98,14 @@ public class FileValidationService {
         return filename.substring(index + 1).toLowerCase(Locale.ROOT);
     }
 
-    private void validateFileSignature(MultipartFile file, String extension) {
     /**
-     * 验证文件内容签名，确保文件真实类型与扩展名一致
+     * 验证文件内容签名，确保文件真实类型与扩展名一致。
+     *
      * @param file 上传的文件
      * @param extension 文件扩展名
      * @throws BusinessException 当文件内容与扩展名不匹配或读取文件失败时抛出
      */
+    private void validateFileSignature(MultipartFile file, String extension) {
         try(InputStream inputStream = file.getInputStream()) {
             byte[] header = inputStream.readAllBytes();
  // 读取文件头部字节
@@ -125,12 +126,13 @@ public class FileValidationService {
         }
     }
 
-    private boolean isZipFile(byte[] header) {
     /**
-     * 检查文件是否为ZIP文件（包括DOCX、XLSX等）
+     * 检查文件是否为 ZIP 文件（包括 DOCX、XLSX 等）。
+     *
      * @param header 文件头部字节
-     * @return 如果是ZIP文件返回true，否则返回false
+     * @return 如果是 ZIP 文件返回 true
      */
+    private boolean isZipFile(byte[] header) {
         return header.length >= 4
                 && header[0] == 0x50
                 && header[1] == 0x4B
@@ -138,12 +140,13 @@ public class FileValidationService {
                 && header[3] == 0x04;
     }
 
-    private boolean isOldOfficeFile(byte[] header) {
     /**
-     * 检查文件是否为旧版Office文件（如.xls）
+     * 检查文件是否为旧版 Office 文件，例如 XLS。
+     *
      * @param header 文件头部字节
-     * @return 如果是旧版Office文件返回true，否则返回false
+     * @return 如果是旧版 Office 文件返回 true
      */
+    private boolean isOldOfficeFile(byte[] header) {
         byte[] signature = {
                 (byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0,
                 (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1
@@ -151,13 +154,14 @@ public class FileValidationService {
         return startsWith(header, signature);
     }
 
-    private boolean startsWith(byte[] source, byte[] prefix) {
     /**
-     * 检查字节数组是否以指定的前缀开头
+     * 检查字节数组是否以指定前缀开头。
+     *
      * @param source 源字节数组
      * @param prefix 要匹配的前缀字节数组
-     * @return 如果源数组以前缀开头返回true，否则返回false
+     * @return 如果源数组以前缀开头返回 true
      */
+    private boolean startsWith(byte[] source, byte[] prefix) {
         if (source.length < prefix.length) {
             return false;
         }
@@ -173,29 +177,12 @@ public class FileValidationService {
 
 
     /**
- * ValidateFile 是一个不可变的数据类，用于验证文件的相关信息。
- * 使用 Java 14+ 引入的 record 类型实现，自动提供 equals()、hashCode()、toString() 等方法。
- */
+     * 验证后的文件信息。
+     */
     public record ValidateFile(
-        /**
-         * 原始文件名，包含文件扩展名
-         * 例如："document.pdf"
-         */
             String originalFilename,
-        /**
-         * 文件扩展名，不包含点号
-         * 例如："pdf"
-         */
             String extension,
-        /**
-         * 文件的 MIME 类型
-         * 例如："application/pdf"
-         */
             String mimeType,
-        /**
-         * 文件大小，以字节为单位
-         * 例如：1024L 表示 1KB
-         */
             long size
     ) {}
 }

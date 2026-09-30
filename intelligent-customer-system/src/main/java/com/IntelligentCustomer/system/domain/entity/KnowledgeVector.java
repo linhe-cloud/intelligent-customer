@@ -9,6 +9,7 @@ import lombok.Data;
 @Data
 public class KnowledgeVector {
     private UUID id;
+    private String fileId;
     private String content;
     private float[] embedding;
     private String sourceFile;
