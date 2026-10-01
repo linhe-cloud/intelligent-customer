@@ -49,3 +49,6 @@ docker/milvus/volumes/
 *.log
 
 test-data/
+data/uploads/
+
+data/uploads/
