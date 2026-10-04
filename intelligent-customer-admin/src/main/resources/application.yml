@@ -56,7 +56,7 @@ spring:
             model: ${BGE_MODEL:BAAI/bge-m3}
             dimension: ${BGE_DIMENSION:1024}
 
-
+# 项目启动扫描目录并注册- uuid， string 类型互转处理器
 mybatis-plus:
     type-handlers-package: com.IntelligentCustomer.system.repository.typehandler
     configuration:
@@ -64,6 +64,7 @@ mybatis-plus:
     global-config:
         banner: false
 
+# milvus 配置
 milvus:
     uri: ${MILVUS_URI:http://localhost:19530}
     token: ${MILVUS_TOKEN:}
@@ -73,6 +74,7 @@ milvus:
     metric-type: ${MILVUS_METRIC_TYPE:COSINE}
     auto-create: true
 
+# 文件上传配置
 document:
     upload-directory: ${DOCUMENT_UPLOAD_DIRECTORY:./data/uploads}
     max-file-size: 20971520

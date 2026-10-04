@@ -1,5 +1,6 @@
 package com.IntelligentCustomer.system.kafka.consumer;
 
+import com.IntelligentCustomer.system.repository.mapper.KnowledgeChunkMapper;
 import com.IntelligentCustomer.system.service.document.DocumentService;
 import com.IntelligentCustomer.system.service.embedding.EmbeddingService;
 import com.IntelligentCustomer.system.repository.milvus.MilvusVectorRepository;
@@ -11,10 +12,13 @@ import com.IntelligentCustomer.system.domain.entity.FileProcessingRecord;
 import com.IntelligentCustomer.system.domain.dto.kafka.DocumentUploadMessage;
 import com.IntelligentCustomer.common.exception.BusinessException;
 import com.IntelligentCustomer.system.repository.mapper.FileProcessingRecordMapper;
+import com.IntelligentCustomer.system.domain.entity.KnowledgeChunk;
+import com.IntelligentCustomer.system.repository.mapper.KnowledgeChunkMapper;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,14 +34,13 @@ public class DocumentUploadConsumer {
     // 日志记录器
     private static final Logger log = LoggerFactory.getLogger(DocumentUploadConsumer.class);
 
-
-
     // 依赖注入的各个服务
     private final DocumentService documentService;      // 文档处理服务
     private final EmbeddingService embeddingService;    // 向量嵌入服务
     private final MilvusVectorRepository milvusVectorRepository;  // Milvus向量存储库
     private final ObjectMapper objectMapper;            // JSON对象映射器
     private final FileProcessingRecordMapper fileProcessingRecordMapper;  // 文件处理记录映射器
+    private final KnowledgeChunkMapper knowledgeChunkMapper;  // 知识块映射器
 
     /**
      * 构造函数，注入所需的服务
@@ -46,13 +49,15 @@ public class DocumentUploadConsumer {
      * @param milvusVectorRepository Milvus向量存储库
      * @param objectMapper JSON对象映射器
      * @param fileProcessingRecordMapper 文件处理记录映射器
+     * @param knowledgeChunkMapper 知识块映射器
      */
-    public DocumentUploadConsumer(DocumentService documentService, EmbeddingService embeddingService, MilvusVectorRepository milvusVectorRepository, ObjectMapper objectMapper, FileProcessingRecordMapper fileProcessingRecordMapper) {
+    public DocumentUploadConsumer(DocumentService documentService, EmbeddingService embeddingService, MilvusVectorRepository milvusVectorRepository, ObjectMapper objectMapper, FileProcessingRecordMapper fileProcessingRecordMapper, KnowledgeChunkMapper knowledgeChunkMapper) {
         this.documentService = documentService;
         this.embeddingService = embeddingService;
         this.milvusVectorRepository = milvusVectorRepository;
         this.objectMapper = objectMapper;
         this.fileProcessingRecordMapper = fileProcessingRecordMapper;
+        this.knowledgeChunkMapper = knowledgeChunkMapper;
     }
     
     /**
@@ -76,11 +81,12 @@ public class DocumentUploadConsumer {
                     log.info("文档已处理成功，跳过重复消费: fileId={}", uploadMsg.getFileId());
                     return;
                 }
-                // 如果是 PROCESSING 状态（上次处理中途崩溃），先清理已有数据再重新处理
-                if ("PROCESSING".equals(record.getStatus())) {
-                    log.warn("文档处于PROCESSING状态，清理旧数据后重新处理: fileId={}", uploadMsg.getFileId());
-                    milvusVectorRepository.deleteByFileId(uploadMsg.getFileId());
-                }
+
+                log.warn("文档尚未成功，清除旧数据后重新处理：fileId={}", uploadMsg.getFileId());
+
+                // 如果不是 SUCCESS 就清除旧数据
+                milvusVectorRepository.deleteByFileId(uploadMsg.getFileId());
+                knowledgeChunkMapper.deleteByFileId(uploadMsg.getFileId());
             }
 
             // 更新为处理中
@@ -99,6 +105,27 @@ public class DocumentUploadConsumer {
                     uploadMsg.getFileName()
             );
 
+            List<KnowledgeChunk> chunks = new ArrayList<>(vectors.size());
+
+            for (KnowledgeVector vector : vectors) {
+                KnowledgeChunk chunk = new KnowledgeChunk();
+
+                // MySQL 和 Milvus 使用同一个ID
+                chunk.setId(vector.getId());
+                chunk.setFileId(vector.getFileId());
+                chunk.setContent(vector.getContent());
+                chunk.setSourceFile(vector.getSourceFile());
+                chunk.setChunkIndex(vector.getChunkIndex());
+                chunk.setCreatedAt(vector.getCreatedAt());
+
+                chunks.add(chunk);
+            }
+
+            // 先保存文本切片到 MySQL
+            for (KnowledgeChunk chunk : chunks) {
+                knowledgeChunkMapper.insert(chunk);
+            }
+
             // 保存文档分块向量到 Milvus
             milvusVectorRepository.save(vectors);
 
@@ -109,9 +136,20 @@ public class DocumentUploadConsumer {
         } catch (Exception e) {
             log.error("文档处理失败：{}", e.getMessage(), e);
             if (uploadMsg != null) {
-                fileProcessingRecordMapper.updateFailure(uploadMsg.getFileId(), e.getMessage());
+                try {
+                    milvusVectorRepository.deleteByFileId(uploadMsg.getFileId());
+                    knowledgeChunkMapper.deleteByFileId(uploadMsg.getFileId());
+                } catch (Exception cleanupException) {
+                    log.error("清理文档处理残留数据失败: fileId={}",
+                            uploadMsg.getFileId(),
+                            cleanupException);
+                }
+
+                fileProcessingRecordMapper.updateFailure(
+                        uploadMsg.getFileId(),
+                        e.getMessage()
+                );
             }
-            throw new BusinessException("文档处理失败", e);
         }
     }
 }

@@ -4,6 +4,7 @@ import com.IntelligentCustomer.common.exception.BusinessException;
 import com.IntelligentCustomer.system.domain.entity.DocumentChunk;
 import com.IntelligentCustomer.system.domain.entity.FileProcessingRecord;
 import com.IntelligentCustomer.system.repository.mapper.FileProcessingRecordMapper;
+import com.IntelligentCustomer.system.repository.mapper.KnowledgeChunkMapper;
 import com.IntelligentCustomer.system.repository.milvus.MilvusVectorRepository;
 import com.IntelligentCustomer.system.service.document.model.ParsedDocument;
 import com.IntelligentCustomer.system.service.document.model.ParsedSection;
@@ -51,6 +52,11 @@ public class DocumentService {
     private final MilvusVectorRepository milvusVectorRepository;
 
     /**
+     * 知识块数据访问接口，用于操作知识块数据库表
+     */
+    private final KnowledgeChunkMapper knowledgeChunkMapper;
+
+    /**
      * 构造函数，通过依赖注入的方式初始化所需的服务组件
      *
      * @param processorFactory 文档处理器工厂
@@ -63,7 +69,8 @@ public class DocumentService {
             TextSplitter textSplitter,
             FileProcessingRecordMapper fileProcessingRecordMapper,
             FileStorageService fileStorageService,
-            MilvusVectorRepository milvusVectorRepository
+            MilvusVectorRepository milvusVectorRepository,
+            KnowledgeChunkMapper knowledgeChunkMapper
     ) {
         this.processorFactory = processorFactory;
         this.textCleaner = textCleaner;
@@ -71,6 +78,7 @@ public class DocumentService {
         this.fileProcessingRecordMapper = fileProcessingRecordMapper;
         this.fileStorageService = fileStorageService;
         this.milvusVectorRepository = milvusVectorRepository;
+        this.knowledgeChunkMapper = knowledgeChunkMapper;
     }
 
     /**
@@ -87,12 +95,10 @@ public class DocumentService {
             String originalFilename
     ) {
         // 创建文档输入对象
-        DocumentInput input =
-                new FileDocumentInput(file, originalFilename);
+        DocumentInput input = new FileDocumentInput(file, originalFilename);
 
         // 根据文件类型获取相应的处理器
-        DocumentProcessor processor =
-                processorFactory.getProcessor(originalFilename);
+        DocumentProcessor processor = processorFactory.getProcessor(originalFilename);
 
         // 解析文档
         ParsedDocument parsedDocument = processor.parse(input);
@@ -132,8 +138,11 @@ public class DocumentService {
             throw new BusinessException("文档不存在");
         }
 
-        // 先删除 Milvus 中该文件对应的向量
+        // 删除 Milvus 中该文件对应的向量
         milvusVectorRepository.deleteByFileId(fileId);
+
+        // 删除 MySQL 中该文件对应的记录
+        knowledgeChunkMapper.deleteByFileId(fileId);
 
         // 再删除本地文件
         fileStorageService.delete(record.getFilePath());
