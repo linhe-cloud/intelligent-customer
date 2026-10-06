@@ -10,10 +10,8 @@ import com.IntelligentCustomer.system.domain.entity.DocumentChunk;
 import com.IntelligentCustomer.system.domain.entity.KnowledgeVector;
 import com.IntelligentCustomer.system.domain.entity.FileProcessingRecord;
 import com.IntelligentCustomer.system.domain.dto.kafka.DocumentUploadMessage;
-import com.IntelligentCustomer.common.exception.BusinessException;
 import com.IntelligentCustomer.system.repository.mapper.FileProcessingRecordMapper;
 import com.IntelligentCustomer.system.domain.entity.KnowledgeChunk;
-import com.IntelligentCustomer.system.repository.mapper.KnowledgeChunkMapper;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 

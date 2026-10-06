@@ -94,13 +94,16 @@ public class SearchService {
         // 多取一些候选结果，再进行融合
         int candidateK = Math.min(topK * 3, 50);
 
+        // 执行语义搜索
         List<KnowledgeVector> semanticResults = semanticSearch(normalizedQuery, candidateK);
 
+        // 执行关键词搜索
         List<KeywordSearchResult> keywordResults = knowledgeChunkMapper.searchByKeyword(
                         normalizedQuery,
                         candidateK
                 );
 
+        // 合并结果
         Set<String> existingChunkKeys = loadExistingChunkKeys(semanticResults);
 
         /*
@@ -257,29 +260,50 @@ public class SearchService {
         return result;
     }
 
+/**
+ * 解析字符串为UUID对象
+ * @param value 要解析的字符串值
+ * @return 解析成功返回对应的UUID对象，解析失败或输入为空返回null
+ */
     private UUID parseUuid(String value) {
+        // 检查输入值是否为null或空字符串
         if (value == null || value.isBlank()) {
             return null;
         }
 
         try {
+            // 尝试将字符串转换为UUID对象
             return UUID.fromString(value);
         } catch (IllegalArgumentException exception) {
+            // 如果字符串格式不正确，捕获异常并返回null
             return null;
         }
     }
 
+/**
+ * 构建合并键的方法
+ * 根据文件ID、分块索引和ID生成一个唯一的合并键
+ *
+ * @param fileId 文件ID，不能为空或空白字符串
+ * @param chunkIndex 分块索引，不能为null
+ * @param id 备用标识符，当 fileId 或 chunkIndex 无效时使用
+ * @return 返回生成的合并键，如果所有参数都无效则返回null
+ */
     private String buildMergeKey(
-            String fileId,
-            Integer chunkIndex,
-            String id
+            String fileId,        // 文件ID，用于标识唯一文件
+            Integer chunkIndex,   // 分块索引，用于标识文件中的分块位置
+            String id            // 备用标识符，当 fileId 或 chunkIndex 无效时使用
     ) {
+    // 检查 fileId 和 chunkIndex 是否有效
         if (fileId != null
                 && !fileId.isBlank()
                 && chunkIndex != null) {
+        // 如果有效，返回 fileId 去除首尾空格后加上分块索引的组合
             return fileId.strip() + "#" + chunkIndex;
         }
 
+    // 如果 fileId 或 chunkIndex 无效，检查 id 是否有效
+    // 如果 id 为 null 或空白字符串则返回 null，否则返回 id
         return id == null || id.isBlank() ? null : id;
     }
 
