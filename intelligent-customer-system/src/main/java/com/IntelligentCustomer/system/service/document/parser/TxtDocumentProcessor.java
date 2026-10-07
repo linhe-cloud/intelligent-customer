@@ -44,7 +44,7 @@ public class TxtDocumentProcessor implements DocumentProcessor {
 
             // 检查文本内容是否为空或仅包含空白字符
             if (text.isBlank()) {
-                throw new BusinessException("TXT文件没有有效内容");
+                throw new BusinessException("TXT文件没有有效内容", 422);
             }
 
             // 创建并设置文本段落信息
@@ -63,7 +63,7 @@ public class TxtDocumentProcessor implements DocumentProcessor {
             return document;
         } catch (IOException e) {
             // 处理文件读取异常，包装为业务异常抛出
-            throw new BusinessException("TXT文件解析失败", e);
+            throw new BusinessException("TXT文件解析失败", 422, e);
         }
     }
 }

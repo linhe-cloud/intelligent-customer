@@ -2,6 +2,7 @@ package com.IntelligentCustomer.admin.web.controller;
 
 import java.util.Map;
 
+import com.IntelligentCustomer.common.exception.BusinessException;
 import com.IntelligentCustomer.system.domain.entity.FileProcessingRecord;
 import com.IntelligentCustomer.system.repository.mapper.FileProcessingRecordMapper;
 import org.springframework.http.ResponseEntity;
@@ -23,53 +24,37 @@ public class DocumentStatusController {
     // 查询处理状态
     @GetMapping("/status/{fileId}")
     public ResponseEntity<?> getStatus(@PathVariable String fileId) {
-        try {
-            FileProcessingRecord record = fileProcessingRecordMapper.findByFileId(fileId);
-
-            if (record == null) {
-                return ResponseEntity.status(404).body(Map.of(
-                    "code", 404,
-                    "message", "文件记录不存在: " + fileId
-                ));
-            }
-            
-            Map<String, Object> response = Map.of(
-                "code", 200,
-                "fileId", fileId,
-                "status", record.getStatus(),
-                "filename", record.getFilename(),
-                "uploadTime", record.getUploadTime()
-            );
-            
-            // 如果处理完成，加上处理时间
-            if ("SUCCESS".equals(record.getStatus())) {
-                response = Map.of(
-                    "code", 200,
-                    "fileId", fileId,
-                    "status", record.getStatus(),
-                    "filename", record.getFilename(),
-                    "processedChunks", record.getProcessedChunks(),
-                    "embeddingsCreated", record.getEmbeddingsCreated(),
-                    "processStartTime", record.getProcessStartTime(),
-                    "processEndTime", record.getProcessEndTime()
-                );
-            } else if ("FAILED".equals(record.getStatus())) {
-                response = Map.of(
-                    "code", 200,
-                    "fileId", fileId,
-                    "status", record.getStatus(),
-                    "filename", record.getFilename(),
-                    "failureReason", record.getFailureReason()
-                );
-            }
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            return ResponseEntity.status(404).body(Map.of(
-                "code", 404,
-                "message", "文件记录不存在: " + fileId
-            ));
+        if (fileId == null || fileId.isBlank()) {
+            throw new BusinessException("文件ID不能为空");
         }
+
+        FileProcessingRecord record =
+                fileProcessingRecordMapper.findByFileId(fileId);
+
+        if (record == null) {
+            throw new BusinessException(
+                    "文件记录不存在: " + fileId,
+                    404
+            );
+        }
+
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("code", 200);
+        response.put("fileId", fileId);
+        response.put("status", record.getStatus());
+        response.put("filename", record.getFilename());
+        response.put("uploadTime", record.getUploadTime());
+
+        // 如果处理完成，加上处理时间和统计数据
+        if ("SUCCESS".equals(record.getStatus())) {
+            response.put("processedChunks", record.getProcessedChunks());
+            response.put("embeddingsCreated", record.getEmbeddingsCreated());
+            response.put("processStartTime", record.getProcessStartTime());
+            response.put("processEndTime", record.getProcessEndTime());
+        } else if ("FAILED".equals(record.getStatus())) {
+            response.put("failureReason", record.getFailureReason());
+        }
+
+        return ResponseEntity.ok(response);
     }
 }

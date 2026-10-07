@@ -39,7 +39,9 @@ public class ChatController {
     @PostMapping
     public ChatResponse chat(@RequestBody ChatRequest request, Principal principal) {
 
-        if (principal == null) { throw new BusinessException("用户未登录"); }
+        if (principal == null) {
+            throw new BusinessException("用户未登录", 401);
+        }
 
     // 获取用户ID
         String userId = principal.getName();

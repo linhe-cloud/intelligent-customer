@@ -37,7 +37,10 @@ public class FileValidationService {
         }
 
         if (file.getSize() > properties.getMaxFileSize()) {
-            throw new BusinessException("上传文件大小不能超过 " + properties.getMaxFileSize() + " 字节");
+            throw new BusinessException(
+                    "上传文件大小不能超过 " + properties.getMaxFileSize() + " 字节",
+                    422
+            );
         }
 
         String originalFilename = file.getOriginalFilename();
@@ -45,7 +48,7 @@ public class FileValidationService {
         String extension = getExtension(safeFilename); // 获取文件扩展名
 
         if (!properties.getAllowedExtensions().contains(extension)) {
-            throw new BusinessException("不允许上传的文件类型: " + extension);
+            throw new BusinessException("不允许上传的文件类型: " + extension, 422);
         }
 
         validateFileSignature(file, extension); // 验证文件内容签名，确保文件真实类型与扩展名一致
@@ -77,7 +80,7 @@ public class FileValidationService {
                 .trim(); // 去除首尾空格
 
         if (normalized.isBlank() || normalized.length() > 255) {
-            throw new BusinessException("文件名无效");
+            throw new BusinessException("文件名无效", 422);
         }
 
         return normalized;
@@ -92,7 +95,7 @@ public class FileValidationService {
     public String getExtension(String filename) {
         int index = filename.lastIndexOf('.');
         if (index < 0 || index == filename.length() - 1) {
-            throw new BusinessException("文件名必须包含扩展名");
+            throw new BusinessException("文件名必须包含扩展名", 422);
         }
 
         return filename.substring(index + 1).toLowerCase(Locale.ROOT);
@@ -119,10 +122,10 @@ public class FileValidationService {
             };
 
             if (!valid) {
-                throw new BusinessException("文件格式不正确");
+                throw new BusinessException("文件格式不正确", 422);
             }
         } catch (IOException e) {
-            throw new BusinessException("读取文件内容失败", e);
+            throw new BusinessException("读取文件内容失败", 422, e);
         }
     }
 

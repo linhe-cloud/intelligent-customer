@@ -84,11 +84,21 @@ public class MilvusVectorRepository {
         }
 
     // 使用Milvus客户端将数据插入到指定的集合中
-        milvusClient.insert(InsertReq.builder()
-                .databaseName(properties.getDatabase())  // 设置数据库名称
-                .collectionName(properties.getCollection())  // 设置集合名称
-                .data(rows)  // 设置要插入的数据
-                .build());  // 构建插入请求并执行
+        try {
+            milvusClient.insert(InsertReq.builder()
+                    .databaseName(properties.getDatabase())  // 设置数据库名称
+                    .collectionName(properties.getCollection())  // 设置集合名称
+                    .data(rows)  // 设置要插入的数据
+                    .build());  // 构建插入请求并执行
+        } catch (BusinessException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw new BusinessException(
+                    "向量数据库暂时不可用，请稍后重试",
+                    503,
+                    exception
+            );
+        }
     }
 
 /**
@@ -113,16 +123,25 @@ public class MilvusVectorRepository {
         }
 
     // 构建并执行搜索请求
-        SearchResp response = milvusClient.search(SearchReq.builder()
-                .databaseName(properties.getDatabase())      // 设置数据库名
-                .collectionName(properties.getCollection())   // 设置集合名
-                .annsField("embedding")                      // 设置向量字段名
-                .metricType(IndexParam.MetricType.COSINE)   // 使用余弦相似度
-                .limit(topK)                                 // 设置返回结果数量
-                .outputFields(List.of("id", "file_id", "content", "source_file",  // 设置返回字段
-                        "chunk_index", "created_at"))
-                .data(List.of(new FloatVec(queryVector)))    // 设置查询向量
-                .build());
+        SearchResp response;
+        try {
+            response = milvusClient.search(SearchReq.builder()
+                    .databaseName(properties.getDatabase())      // 设置数据库名
+                    .collectionName(properties.getCollection())   // 设置集合名
+                    .annsField("embedding")                      // 设置向量字段名
+                    .metricType(IndexParam.MetricType.COSINE)   // 使用余弦相似度
+                    .limit(topK)                                 // 设置返回结果数量
+                    .outputFields(List.of("id", "file_id", "content", "source_file",  // 设置返回字段
+                            "chunk_index", "created_at"))
+                    .data(List.of(new FloatVec(queryVector)))    // 设置查询向量
+                    .build());
+        } catch (RuntimeException exception) {
+            throw new BusinessException(
+                    "向量数据库暂时不可用，请稍后重试",
+                    503,
+                    exception
+            );
+        }
 
     // 处理搜索结果
         if (response == null || response.getSearchResults() == null
@@ -157,13 +176,22 @@ public class MilvusVectorRepository {
     // 使用Milvus客户端执行删除操作
     // 构建删除请求，指定数据库名、集合名和过滤条件
     // 过滤条件使用file_id字段匹配指定的文件ID
-        long deleted = milvusClient.delete(
-                DeleteReq.builder()
-                        .databaseName(properties.getDatabase())
-                        .collectionName(properties.getCollection())
-                        .filter("file_id == \"" + fileId + "\"")
-                        .build()
-        ).getDeleteCnt();  // 获取删除的记录数量
+        long deleted;
+        try {
+            deleted = milvusClient.delete(
+                    DeleteReq.builder()
+                            .databaseName(properties.getDatabase())
+                            .collectionName(properties.getCollection())
+                            .filter("file_id == \"" + fileId + "\"")
+                            .build()
+            ).getDeleteCnt();  // 获取删除的记录数量
+        } catch (RuntimeException exception) {
+            throw new BusinessException(
+                    "向量数据库暂时不可用，请稍后重试",
+                    503,
+                    exception
+            );
+        }
 
     // 将long类型转换为int类型并返回
         return Math.toIntExact(deleted);

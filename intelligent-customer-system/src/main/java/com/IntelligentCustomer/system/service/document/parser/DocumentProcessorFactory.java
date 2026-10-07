@@ -37,7 +37,10 @@ public class DocumentProcessorFactory {
         return processors.stream()
                 .filter(p -> p.supports(extension))  // 过滤出支持该文件扩展名的处理器
                 .findFirst()                        // 获取第一个匹配的处理器
-                .orElseThrow(() -> new BusinessException("不支持的文件类型: " + fileName));  // 如果没有匹配的处理器则抛出异常
+                .orElseThrow(() -> new BusinessException(
+                        "不支持的文件类型: " + fileName,
+                        422
+                ));  // 如果没有匹配的处理器则抛出异常
     }
 
     /**

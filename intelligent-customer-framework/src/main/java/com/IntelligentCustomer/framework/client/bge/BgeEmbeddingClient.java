@@ -60,11 +60,12 @@ public class BgeEmbeddingClient {
             // 处理HTTP响应异常
             throw new BusinessException(
                     "BGE API 请求失败，HTTP 状态码：" + exception.getStatusCode().value(),
+                    502,
                     exception
             );
         } catch (RestClientException exception) {
             // 处理REST客户端异常
-            throw new BusinessException("无法连接 BGE API", exception);
+            throw new BusinessException("无法连接 BGE API", 502, exception);
         }
 
         return convertResponse(response, texts.size()); // 转换响应结果
@@ -79,14 +80,15 @@ public class BgeEmbeddingClient {
     private List<float[]> convertResponse(BgeEmbeddingResponse response, int expectedCount) {
         // 检查响应是否为空
         if (response == null || response.getData() == null) {
-            throw new BusinessException("BGE API 返回结果为空");
+            throw new BusinessException("BGE API 返回结果为空", 502);
         }
 
         // 检查向量数量是否匹配
         if (response.getData().size() != expectedCount) {
             throw new BusinessException(
                     "BGE 返回向量数量不正确，期望：" + expectedCount
-                            + "，实际：" + response.getData().size()
+                            + "，实际：" + response.getData().size(),
+                    502
             );
         }
 
@@ -102,14 +104,15 @@ public class BgeEmbeddingClient {
 
             // 检查向量是否为空
             if (embedding == null) {
-                throw new BusinessException("BGE 返回了空向量");
+                throw new BusinessException("BGE 返回了空向量", 502);
             }
 
             // 检查向量维度是否匹配配置
             if (embedding.size() != properties.getDimension()) {
                 throw new BusinessException(
                         "BGE 向量维度不正确，配置维度：" + properties.getDimension()
-                                + "，实际维度：" + embedding.size()
+                                + "，实际维度：" + embedding.size(),
+                        502
                 );
             }
 

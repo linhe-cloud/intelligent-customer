@@ -3,6 +3,7 @@ package com.IntelligentCustomer.admin.web.controller;
 import java.security.Principal;
 import java.util.*;
 
+import com.IntelligentCustomer.common.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.IntelligentCustomer.system.domain.entity.Customer;
@@ -43,12 +44,11 @@ public class CustomerController {
     // 查询单个客户
     @GetMapping("/{id}/find")
     public ResponseEntity<?> findById(@PathVariable UUID id) {
-        try {
-            Customer customer = customerMapper.findById(id);
-            return ResponseEntity.ok(Map.of("code", 200, "data", customer));
-        } catch (Exception e) {
-            return ResponseEntity.status(404).body(Map.of("code", 404, "message", "客户不存在"));
+        Customer customer = customerMapper.findById(id);
+        if (customer == null) {
+            throw new BusinessException("客户不存在", 404);
         }
+        return ResponseEntity.ok(Map.of("code", 200, "data", customer));
     }
 
     // 更新客户

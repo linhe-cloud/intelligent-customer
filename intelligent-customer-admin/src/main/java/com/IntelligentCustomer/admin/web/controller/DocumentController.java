@@ -12,6 +12,8 @@ import com.IntelligentCustomer.system.service.document.FileValidationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
@@ -25,6 +27,9 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/document")
 public class DocumentController {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(DocumentController.class);
 
     /**
      * 文件处理记录数据访问层
@@ -132,10 +137,14 @@ public class DocumentController {
 
             documentUploadProducer.send(message);
 
+        } catch (BusinessException exception) {
+            // 保留文件校验、Kafka 等异常原本的状态码
+            cleanupStoredFile(storedFile.filePath());
+            throw exception;
         } catch (Exception exception) {
             // 数据库或消息发送失败时清理已保存文件
-            fileStorageService.delete(storedFile.filePath());
-            throw new BusinessException("文件上传处理失败", exception);
+            cleanupStoredFile(storedFile.filePath());
+            throw new BusinessException("文件上传处理失败", 503, exception);
         }
 
         return ResponseEntity.ok(Map.of(
@@ -213,11 +222,11 @@ public class DocumentController {
                 fileProcessingRecordMapper.findByFileId(fileId);
 
         if (record == null) {
-            throw new BusinessException("文档不存在");
+            throw new BusinessException("文档不存在", 404);
         }
 
         if (!"FAILED".equals(record.getStatus())) {
-            throw new BusinessException("只有处理失败的文档才能重试");
+            throw new BusinessException("只有处理失败的文档才能重试", 409);
         }
 
         // 删除旧向量
@@ -228,7 +237,7 @@ public class DocumentController {
                 fileProcessingRecordMapper.resetToPending(fileId);
 
         if (updated == 0) {
-            throw new BusinessException("重置文档状态失败");
+            throw new BusinessException("重置文档状态失败", 500);
         }
 
         // 重新发送 Kafka 消息
@@ -255,5 +264,13 @@ public class DocumentController {
                 "fileId", fileId,
                 "status", "PENDING"
         ));
+    }
+
+    private void cleanupStoredFile(String filePath) {
+        try {
+            fileStorageService.delete(filePath);
+        } catch (Exception cleanupException) {
+            log.error("清理上传文件失败: filePath={}", filePath, cleanupException);
+        }
     }
 }

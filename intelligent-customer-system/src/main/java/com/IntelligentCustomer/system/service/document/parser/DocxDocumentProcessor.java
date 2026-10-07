@@ -88,13 +88,13 @@ public class DocxDocumentProcessor implements DocumentProcessor {
 
             // 如果没有找到有效内容，抛出异常
             if (result.getSections().isEmpty()) {
-                throw new BusinessException("DOCX 文件没有有效文本");
+                throw new BusinessException("DOCX 文件没有有效文本", 422);
             }
 
             return result;
 
         } catch (IOException e) {
-            throw new BusinessException("DOCX 文件解析失败", e);
+            throw new BusinessException("DOCX 文件解析失败", 422, e);
         }
     }
 

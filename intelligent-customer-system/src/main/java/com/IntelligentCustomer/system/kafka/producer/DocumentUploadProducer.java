@@ -8,6 +8,9 @@ import com.IntelligentCustomer.common.exception.BusinessException;
 import org.springframework.kafka.core.KafkaTemplate;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * 文档上传消息生产者服务类
@@ -46,22 +49,27 @@ public class DocumentUploadProducer {
             // 将消息对象转换为JSON字符串
             String json = objectMapper.writeValueAsString(message);
 
-            // 发送消息到Kafka，并处理发送结果
-            kafkaTemplate.send(TOPIC, message.getFileId(), json)
-                .whenComplete((result, ex) -> {
-                    if (ex != null) {
-                        // 消息发送失败，记录错误日志
-                        logger.error("文档上传消息发送失败： fileId={}, error={}", message.getFileId(), ex.getMessage());
-                    } else {
-                        // 消息发送成功，记录成功日志
-                        logger.info("文档上传消息发送成功： fileId={}, partition={}, offset={}", message.getFileId(), result.getRecordMetadata().partition(), result.getRecordMetadata().offset());
-                    }
-                });
-        } catch (Exception e) {
+            // 上传接口需要确认消息已经写入Kafka，否则不能返回成功。
+            var result = kafkaTemplate.send(TOPIC, message.getFileId(), json)
+                    .get(10, TimeUnit.SECONDS);
+
+            logger.info(
+                    "文档上传消息发送成功： fileId={}, partition={}, offset={}",
+                    message.getFileId(),
+                    result.getRecordMetadata().partition(),
+                    result.getRecordMetadata().offset()
+            );
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            logger.error("文档上传消息发送被中断： fileId={}", message.getFileId(), exception);
+            throw new BusinessException("消息队列暂时不可用，请稍后重试", 503, exception);
+        } catch (ExecutionException | TimeoutException exception) {
             // 捕获并记录异常
-            logger.error("文档上传消息发送失败： fileId={}", message.getFileId());
-            // 抛出业务异常
-            throw new BusinessException("文档上传消息发送失败", e);
+            logger.error("文档上传消息发送失败： fileId={}", message.getFileId(), exception);
+            throw new BusinessException("消息队列暂时不可用，请稍后重试", 503, exception);
+        } catch (Exception exception) {
+            logger.error("文档上传消息序列化失败： fileId={}", message.getFileId(), exception);
+            throw new BusinessException("文档上传消息处理失败", 500, exception);
         }
     }
 }

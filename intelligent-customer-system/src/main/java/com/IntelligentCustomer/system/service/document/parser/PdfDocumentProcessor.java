@@ -37,7 +37,7 @@ public class PdfDocumentProcessor implements DocumentProcessor {
         try (PDDocument pdf = PDDocument.load(input.getInputStream())) {
             // 检查PDF是否加密
             if (pdf.isEncrypted()) {
-                throw new BusinessException("PDF文件已加密，无法解析");
+                throw new BusinessException("PDF文件已加密，无法解析", 422);
             }
 
             // 初始化解析结果对象
@@ -77,13 +77,14 @@ public class PdfDocumentProcessor implements DocumentProcessor {
             // 检查是否提取到足够的有效文本
             if (validCharacterCount < 20) {
                 throw new BusinessException(
-                        "PDF未提取到有效文本，可能是扫描版PDF"
+                        "PDF未提取到有效文本，可能是扫描版PDF",
+                        422
                 );
             }
 
             return result;
         } catch (IOException e) {
-            throw new BusinessException("PDF文件解析失败", e);
+            throw new BusinessException("PDF文件解析失败", 422, e);
         }
 
     }

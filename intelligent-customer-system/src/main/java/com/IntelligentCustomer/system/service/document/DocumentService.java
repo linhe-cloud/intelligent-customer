@@ -118,7 +118,7 @@ public class DocumentService {
 
         // 如果清理后没有有效内容，抛出业务异常
         if (parsedDocument.getSections().isEmpty()) {
-            throw new BusinessException("文档没有可入库的有效文本");
+            throw new BusinessException("文档没有可入库的有效文本", 422);
         }
 
         // 将文档分割成小块并返回
@@ -135,7 +135,7 @@ public class DocumentService {
                 fileProcessingRecordMapper.findByFileId(fileId);
 
         if (record == null) {
-            throw new BusinessException("文档不存在");
+            throw new BusinessException("文档不存在", 404);
         }
 
         // 删除 Milvus 中该文件对应的向量
@@ -151,7 +151,7 @@ public class DocumentService {
         int deleted = fileProcessingRecordMapper.deleteByFileId(fileId);
 
         if (deleted == 0) {
-            throw new BusinessException("删除文档记录失败");
+            throw new BusinessException("删除文档记录失败", 500);
         }
 
         return Map.of(

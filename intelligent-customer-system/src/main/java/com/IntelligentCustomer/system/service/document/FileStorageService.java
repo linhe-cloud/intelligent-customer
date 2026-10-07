@@ -56,7 +56,7 @@ public class FileStorageService {
 
         // 安全检查，确保目标路径在上传目录下
         if (!target.startsWith(directory)) {
-            throw new BusinessException("文件存储路径不合法");
+            throw new BusinessException("文件存储路径不合法", 500);
         }
 
         try {
@@ -70,7 +70,7 @@ public class FileStorageService {
                     hash             // 文件哈希值
             );
         } catch (IOException e) {
-            throw new BusinessException("保存上传文件失败", e);
+            throw new BusinessException("保存上传文件失败", 500, e);
         }
     }
 
@@ -86,7 +86,7 @@ public class FileStorageService {
         try {
             Files.deleteIfExists(Path.of(filePath)); // 删除文件
         } catch (IOException e) {
-            throw new BusinessException("删除文件失败", e);
+            throw new BusinessException("删除文件失败", 500, e);
         }
     }
 
@@ -108,7 +108,7 @@ public class FileStorageService {
 
             return HexFormat.of().formatHex(digest.digest()); // 返回十六进制格式的哈希值
         } catch (Exception e) {
-            throw new BusinessException("计算文件摘要失败", e);
+            throw new BusinessException("计算文件摘要失败", 500, e);
         }
     }
 

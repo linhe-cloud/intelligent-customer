@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.IntelligentCustomer.common.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.IntelligentCustomer.system.domain.entity.Staff;
@@ -51,12 +52,11 @@ public class StaffController {
     // 查询单个
     @GetMapping("/{id}/find")
     public ResponseEntity<?> findById(@PathVariable UUID id) {
-        try {
-            Staff staff = staffMapper.findById(id);
-            return ResponseEntity.ok(Map.of("code", 200, "data", staff));
-        } catch (Exception e) {
-            return ResponseEntity.status(404).body(Map.of("code", 404, "message", "客服人员不存在"));
+        Staff staff = staffMapper.findById(id);
+        if (staff == null) {
+            throw new BusinessException("客服人员不存在", 404);
         }
+        return ResponseEntity.ok(Map.of("code", 200, "data", staff));
     }
 
     // 更新

@@ -59,7 +59,7 @@ public class ExcelDocumentProcessor implements DocumentProcessor {
 
             // 如果没有找到有效数据，抛出业务异常
             if (result.getSections().isEmpty()) {
-                throw new BusinessException("Excel文件没有有效数据");
+                throw new BusinessException("Excel文件没有有效数据", 422);
             }
 
             return result;
@@ -68,7 +68,7 @@ public class ExcelDocumentProcessor implements DocumentProcessor {
             if (e instanceof BusinessException businessException) {
                 throw businessException;
             }
-            throw new BusinessException("Excel文件解析失败", e);
+            throw new BusinessException("Excel文件解析失败", 422, e);
         }
     }
 
