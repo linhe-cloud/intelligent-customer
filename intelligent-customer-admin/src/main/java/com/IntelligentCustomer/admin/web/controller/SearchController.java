@@ -1,8 +1,10 @@
 package com.IntelligentCustomer.admin.web.controller;
 
 import com.IntelligentCustomer.system.domain.dto.search.HybridSearchResult;
+import com.IntelligentCustomer.system.domain.dto.search.SearchRequest;
 import com.IntelligentCustomer.system.domain.entity.KnowledgeVector;
 import com.IntelligentCustomer.system.service.search.SearchService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,16 +30,10 @@ public class SearchController {
      */
     @PostMapping("/semantic")
     public ResponseEntity<?> semanticSearch(
-            @RequestBody Map<String, Object> request
+            @Valid @RequestBody SearchRequest request
     ) {
-        String query = (String) request.get("query");
-
-        int topK = request.get("topk") == null
-                ? 5
-                : ((Number) request.get("topk")).intValue();
-
         List<KnowledgeVector> results =
-                searchService.semanticSearch(query, topK);
+                searchService.semanticSearch(request.getQuery(), request.getTopK());
 
         return ResponseEntity.ok(
                 response(
@@ -52,16 +48,10 @@ public class SearchController {
      */
     @PostMapping("/hybrid")
     public ResponseEntity<?> hybridSearch(
-            @RequestBody Map<String, Object> request
+            @Valid @RequestBody SearchRequest request
     ) {
-        String query = (String) request.get("query");
-
-        int topK = request.get("topk") == null
-                ? 5
-                : ((Number) request.get("topk")).intValue();
-
         List<HybridSearchResult> results =
-                searchService.hybridSearch(query, topK);
+                searchService.hybridSearch(request.getQuery(), request.getTopK());
 
         return ResponseEntity.ok(
                 response(

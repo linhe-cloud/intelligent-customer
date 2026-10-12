@@ -1,6 +1,10 @@
 server:
     port: 8081
 
+jwt:
+    secret: ${JWT_SECRET}
+    expiration: ${JWT_EXPIRATION:86400000}
+
 spring:
     config:
         import: "optional:file:./.env[.properties]"
