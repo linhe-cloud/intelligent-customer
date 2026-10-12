@@ -60,9 +60,17 @@ public class SecurityConfig {
                 // Staff接口，需要STAFF角色
                 .requestMatchers("/document/**").hasRole("STAFF")  // 访问/document/下的资源需要STAFF角色
                 .requestMatchers("/embedding/**").hasRole("STAFF")  // 访问/embedding/下的资源需要STAFF角色
-                .requestMatchers("/staff/**").hasRole("ADMIN")  // 员工管理接口仅管理员可访问
-                // DELETE请求的/customer/**和/staff/**接口，需要ADMIN角色
-                .requestMatchers(HttpMethod.DELETE, "/customer/**").hasRole("ADMIN")  // 删除客户信息需要管理员权限
+
+                // 客服和管理员可以查询客户信息
+                .requestMatchers(HttpMethod.GET, "/customer/**").hasRole("STAFF")
+                // 客户新增、修改和删除只允许管理员操作
+                .requestMatchers(HttpMethod.POST, "/customer/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/customer/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/customer/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/customer/**").hasRole("ADMIN")
+
+                // 客服人员管理接口仅管理员可访问
+                .requestMatchers("/staff/**").hasRole("ADMIN")
 
                 // 其他需要认证
                 .anyRequest().authenticated()  // 除上述配置外的所有请求都需要认证

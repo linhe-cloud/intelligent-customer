@@ -1,5 +1,6 @@
 package com.IntelligentCustomer.framework.config;
 
+    import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,12 +33,24 @@ public class KafkaConfig {
         return new NewTopic("document-upload-dlq", 1, (short) 1);
     }
 
+    // 对话记录死信队列
+    @Bean
+    public NewTopic chatMessageDLQ() {
+        return new NewTopic("chat-message-dlq", 1, (short) 1);
+    }
+
     // 配置重试策略和死信队列恢复器
     @Bean
     public DefaultErrorHandler errorHandler(KafkaTemplate<String, String> kafkaTemplate) {
-        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate);
+        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
+                kafkaTemplate,
+                (record, exception) ->
+                        new TopicPartition(record.topic() + "-dlq", -1)
+        );
         FixedBackOff backOff = new FixedBackOff(3000L, 3); // 3秒间隔，最多重试3次
-        return new DefaultErrorHandler(recoverer, backOff);
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, backOff);
+        errorHandler.addNotRetryableExceptions(IllegalArgumentException.class);
+        return errorHandler;
     }
 
     // 将 ErrorHandler 注册到监听器容器

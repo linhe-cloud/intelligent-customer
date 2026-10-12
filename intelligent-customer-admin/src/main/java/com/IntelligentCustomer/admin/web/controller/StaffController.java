@@ -9,6 +9,7 @@ import com.IntelligentCustomer.common.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.IntelligentCustomer.system.domain.entity.Staff;
+import com.IntelligentCustomer.system.domain.vo.StaffVO;
 import com.IntelligentCustomer.system.repository.mapper.StaffMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -39,14 +40,28 @@ public class StaffController {
     @GetMapping("/all")
     public ResponseEntity<?> findAll() {
         List<Staff> staffList = staffMapper.findAll();
-        return ResponseEntity.ok(Map.of("code", 200, "data", staffList, "totalCount", staffList.size()));
+        List<StaffVO> staffVOList = staffList.stream()
+                .map(StaffVO::from)
+                .toList();
+        return ResponseEntity.ok(Map.of(
+                "code", 200,
+                "data", staffVOList,
+                "totalCount", staffVOList.size()
+        ));
     }
 
     // 按角色查询
     @GetMapping("/role/{role}/find")
     public ResponseEntity<?> findByRole(@PathVariable String role) {
         List<Staff> staffList = staffMapper.findByRole(role);
-        return ResponseEntity.ok(Map.of("code", 200, "data", staffList, "totalCount", staffList.size()));
+        List<StaffVO> staffVOList = staffList.stream()
+                .map(StaffVO::from)
+                .toList();
+        return ResponseEntity.ok(Map.of(
+                "code", 200,
+                "data", staffVOList,
+                "totalCount", staffVOList.size()
+        ));
     }
 
     // 查询单个
@@ -56,7 +71,10 @@ public class StaffController {
         if (staff == null) {
             throw new BusinessException("客服人员不存在", 404);
         }
-        return ResponseEntity.ok(Map.of("code", 200, "data", staff));
+        return ResponseEntity.ok(Map.of(
+                "code", 200,
+                "data", StaffVO.from(staff)
+        ));
     }
 
     // 更新

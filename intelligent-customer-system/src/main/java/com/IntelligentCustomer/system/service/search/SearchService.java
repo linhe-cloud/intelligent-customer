@@ -27,13 +27,21 @@ public class SearchService {
 
     // RRF (Reciprocal Rank Fusion) 算法的常量参数K
     private static final int RRF_K = 60;
-    // 最大返回结果数量
+    // 用户最终可请求的最大返回结果数量
     private static final int MAX_TOP_K = 20;
+    // 混合检索内部候选结果的最大数量
+    private static final int MAX_CANDIDATE_K = 50;
+    // 混合检索内部候选数量相对于最终结果数量的倍数
+    private static final int CANDIDATE_MULTIPLIER = 3;
 
     // 语义搜索权重
     private static final double SEMANTIC_WEIGHT = 0.6;
     // 关键词搜索权重
     private static final double KEYWORD_WEIGHT = 0.4;
+    // 语义检索最低相关性分数
+    private static final double SEMANTIC_SCORE_THRESHOLD = 0.60;
+    // MySQL FULLTEXT 关键词检索最低有效分数
+    private static final double KEYWORD_SCORE_THRESHOLD = 0.0;
 
     // 向量嵌入服务
     private final EmbeddingService embeddingService;
@@ -70,8 +78,10 @@ public class SearchService {
         validateQuery(query);
         validateTopK(topK);
 
-        float[] queryVector = embeddingService.embed(query.strip());
-        return milvusVectorRepository.search(queryVector, topK);
+        return searchSemanticCandidates(query.strip(), topK)
+                .stream()
+                .filter(this::passesSemanticThreshold)
+                .toList();
     }
 
     /**
@@ -92,10 +102,17 @@ public class SearchService {
         String normalizedQuery = query.strip();
 
         // 多取一些候选结果，再进行融合
-        int candidateK = Math.min(topK * 3, 50);
+        int candidateK = Math.min(
+                topK * CANDIDATE_MULTIPLIER,
+                MAX_CANDIDATE_K
+        );
 
         // 执行语义搜索
-        List<KnowledgeVector> semanticResults = semanticSearch(normalizedQuery, candidateK);
+        List<KnowledgeVector> semanticResults =
+                searchSemanticCandidates(normalizedQuery, candidateK)
+                        .stream()
+                        .filter(this::passesSemanticThreshold)
+                        .toList();
 
         // 执行关键词搜索
         List<KeywordSearchResult> keywordResults = knowledgeChunkMapper.searchByKeyword(
@@ -178,6 +195,7 @@ public class SearchService {
 
         return mergedResults.values()
                 .stream()
+                .filter(this::isRelevant)
                 .sorted(
                         Comparator.comparing(
                                 HybridSearchResult::getFusedScore,
@@ -186,6 +204,49 @@ public class SearchService {
                 )
                 .limit(topK)
                 .toList();
+    }
+
+    /**
+     * 执行内部语义候选检索。
+     *
+     * <p>该方法使用内部候选数量限制，不能复用只面向外部接口的
+     * {@link #semanticSearch(String, int)}，避免 topK 与 candidateK 的限制相互冲突。</p>
+     */
+    private List<KnowledgeVector> searchSemanticCandidates(
+            String query,
+            int candidateK
+    ) {
+        validateCandidateK(candidateK);
+
+        float[] queryVector = embeddingService.embed(query.strip());
+        return milvusVectorRepository.search(queryVector, candidateK);
+    }
+
+    /**
+     * 判断语义检索结果是否达到最低相关性要求。
+     */
+    private boolean passesSemanticThreshold(KnowledgeVector vector) {
+        return vector != null
+                && vector.getScore() != null
+                && vector.getScore() >= SEMANTIC_SCORE_THRESHOLD;
+    }
+
+    /**
+     * 判断混合检索结果是否具有有效知识依据。
+     *
+     * <p>语义检索达到阈值，或关键词检索实际命中时，认为结果有效。</p>
+     */
+    private boolean isRelevant(HybridSearchResult result) {
+        if (result == null) {
+            return false;
+        }
+
+        boolean semanticHit = result.getSemanticScore() != null
+                && result.getSemanticScore() >= SEMANTIC_SCORE_THRESHOLD;
+        boolean keywordHit = result.getKeywordScore() != null
+                && result.getKeywordScore() > KEYWORD_SCORE_THRESHOLD;
+
+        return semanticHit || keywordHit;
     }
 
     /**
@@ -346,6 +407,17 @@ public class SearchService {
 
             throw new BusinessException(
                     "topK 必须在 1 到 " + MAX_TOP_K + " 之间"
+            );
+        }
+    }
+
+    /**
+     * 验证内部候选数量。
+     */
+    private void validateCandidateK(int candidateK) {
+        if (candidateK <= 0 || candidateK > MAX_CANDIDATE_K) {
+            throw new BusinessException(
+                    "候选数量必须在 1 到 " + MAX_CANDIDATE_K + " 之间"
             );
         }
     }

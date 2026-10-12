@@ -1,6 +1,7 @@
 package com.IntelligentCustomer.system.domain.entity;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -14,6 +15,7 @@ public class Customer {
     @TableId("id")
     private UUID id;
     private String username;
+    @JsonIgnore
     @TableField("password_hash")
     private String passwordHash;
     private String name;

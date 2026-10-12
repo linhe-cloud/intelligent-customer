@@ -40,7 +40,10 @@ public class SearchController {
                 searchService.semanticSearch(query, topK);
 
         return ResponseEntity.ok(
-                response("语义搜索成功", results)
+                response(
+                        results.isEmpty() ? "未找到相关知识" : "语义搜索成功",
+                        results
+                )
         );
     }
 
@@ -61,7 +64,10 @@ public class SearchController {
                 searchService.hybridSearch(query, topK);
 
         return ResponseEntity.ok(
-                response("混合搜索成功", results)
+                response(
+                        results.isEmpty() ? "未找到相关知识" : "混合搜索成功",
+                        results
+                )
         );
     }
 

@@ -4,6 +4,10 @@ import java.time.LocalDateTime;
 
 import lombok.Data;
 
+/**
+ * 文档上传消息类
+ * 用于封装文档上传相关的信息
+ */
 @Data
 public class DocumentUploadMessage {
 

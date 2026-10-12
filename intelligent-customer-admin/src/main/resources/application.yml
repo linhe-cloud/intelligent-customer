@@ -8,6 +8,13 @@ spring:
     application:
         name: IntelligentCustomer
 
+    # 外部 AI 服务的 HTTP 超时配置
+    http:
+        client:
+            factory: JDK
+            connect-timeout: ${AI_HTTP_CONNECT_TIMEOUT:5s}
+            read-timeout: ${AI_HTTP_READ_TIMEOUT:120s}
+
     servlet:
         multipart:
             max-file-size: 100MB
@@ -73,6 +80,8 @@ milvus:
     dimension: ${MILVUS_DIMENSION:1024}
     metric-type: ${MILVUS_METRIC_TYPE:COSINE}
     auto-create: true
+    connect-timeout-ms: ${MILVUS_CONNECT_TIMEOUT_MS:5000}
+    rpc-deadline-ms: ${MILVUS_RPC_DEADLINE_MS:30000}
 
 # 文件上传配置
 document:

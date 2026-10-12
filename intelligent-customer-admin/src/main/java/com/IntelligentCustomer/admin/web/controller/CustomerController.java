@@ -7,6 +7,7 @@ import com.IntelligentCustomer.common.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.IntelligentCustomer.system.domain.entity.Customer;
+import com.IntelligentCustomer.system.domain.vo.CustomerVO;
 import com.IntelligentCustomer.system.repository.mapper.CustomerMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -38,7 +39,14 @@ public class CustomerController {
     @GetMapping("/all")
     public ResponseEntity<?> findAll() {
         List<Customer> customers = customerMapper.findAll();
-        return ResponseEntity.ok(Map.of("code", 200, "message", "查询成功", "data", customers));
+        List<CustomerVO> customerVOList = customers.stream()
+                .map(CustomerVO::from)
+                .toList();
+        return ResponseEntity.ok(Map.of(
+                "code", 200,
+                "message", "查询成功",
+                "data", customerVOList
+        ));
     }
 
     // 查询单个客户
@@ -48,7 +56,10 @@ public class CustomerController {
         if (customer == null) {
             throw new BusinessException("客户不存在", 404);
         }
-        return ResponseEntity.ok(Map.of("code", 200, "data", customer));
+        return ResponseEntity.ok(Map.of(
+                "code", 200,
+                "data", CustomerVO.from(customer)
+        ));
     }
 
     // 更新客户

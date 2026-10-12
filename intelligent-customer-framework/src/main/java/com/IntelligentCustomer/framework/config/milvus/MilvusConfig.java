@@ -15,7 +15,9 @@ public class MilvusConfig {
     public MilvusClientV2 milvusClient(MilvusProperties properties) {
         ConnectConfig.ConnectConfigBuilder builder = ConnectConfig.builder()
                 .uri(properties.getUri())
-                .dbName(properties.getDatabase());
+                .dbName(properties.getDatabase())
+                .connectTimeoutMs(properties.getConnectTimeoutMs())
+                .rpcDeadlineMs(properties.getRpcDeadlineMs());
 
         if (StringUtils.hasText(properties.getToken())) {
             builder.token(properties.getToken());

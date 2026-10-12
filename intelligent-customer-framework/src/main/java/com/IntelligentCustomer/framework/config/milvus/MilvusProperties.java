@@ -13,4 +13,6 @@ public class MilvusProperties {
     private int dimension = 1024;
     private String metricType = "COSINE";
     private boolean autoCreate = true;
+    private long connectTimeoutMs = 5000;
+    private long rpcDeadlineMs = 30000;
 }

@@ -125,8 +125,7 @@ public class DocumentController {
             fileProcessingRecordMapper.insert(record);
 
             // 5. 发送 Kafka 消息
-            DocumentUploadMessage message =
-                    new DocumentUploadMessage();
+            DocumentUploadMessage message = new DocumentUploadMessage();
 
             message.setFileId(fileId);
             message.setFileName(validated.originalFilename());

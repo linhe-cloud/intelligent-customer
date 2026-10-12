@@ -14,6 +14,7 @@ import com.IntelligentCustomer.system.repository.mapper.FileProcessingRecordMapp
 import com.IntelligentCustomer.system.domain.entity.KnowledgeChunk;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -64,13 +65,13 @@ public class DocumentUploadConsumer {
      */
     @KafkaListener(topics = "document-upload", groupId = "document-processor-group")
     public void consume(String message) {
-    
-        DocumentUploadMessage uploadMsg = null;
+        DocumentUploadMessage uploadMsg = parseMessage(message);
+
+        if (uploadMsg.getFileId() == null || uploadMsg.getFileId().isBlank()) {
+            throw new IllegalArgumentException("文档消息缺少 fileId");
+        }
 
         try {
-            // 将JSON消息转换为DocumentUploadMessage对象
-            uploadMsg = objectMapper.readValue(message, DocumentUploadMessage.class);
-
             // 幂等保护：检查文档当前状态
             FileProcessingRecord record = fileProcessingRecordMapper.findByFileId(uploadMsg.getFileId());
             if (record != null) {
@@ -133,21 +134,42 @@ public class DocumentUploadConsumer {
             log.info("文档处理完成：fileId={}, fileName={}, chunks={}, vectors={}", uploadMsg.getFileId(), uploadMsg.getFileName(), documents.size(), vectors.size());
         } catch (Exception e) {
             log.error("文档处理失败：{}", e.getMessage(), e);
-            if (uploadMsg != null) {
-                try {
-                    milvusVectorRepository.deleteByFileId(uploadMsg.getFileId());
-                    knowledgeChunkMapper.deleteByFileId(uploadMsg.getFileId());
-                } catch (Exception cleanupException) {
-                    log.error("清理文档处理残留数据失败: fileId={}",
-                            uploadMsg.getFileId(),
-                            cleanupException);
-                }
+            try {
+                milvusVectorRepository.deleteByFileId(uploadMsg.getFileId());
+                knowledgeChunkMapper.deleteByFileId(uploadMsg.getFileId());
+            } catch (Exception cleanupException) {
+                log.error("清理文档处理残留数据失败: fileId={}",
+                        uploadMsg.getFileId(),
+                        cleanupException);
+            }
 
+            try {
                 fileProcessingRecordMapper.updateFailure(
                         uploadMsg.getFileId(),
                         e.getMessage()
                 );
+            } catch (Exception statusException) {
+                log.error("更新文档失败状态失败: fileId={}",
+                        uploadMsg.getFileId(),
+                        statusException);
             }
+
+            rethrow(e);
         }
+    }
+
+    private DocumentUploadMessage parseMessage(String message) {
+        try {
+            return objectMapper.readValue(message, DocumentUploadMessage.class);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException("文档消息格式不正确", exception);
+        }
+    }
+
+    private void rethrow(Exception exception) {
+        if (exception instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        }
+        throw new IllegalStateException("文档处理失败", exception);
     }
 }
